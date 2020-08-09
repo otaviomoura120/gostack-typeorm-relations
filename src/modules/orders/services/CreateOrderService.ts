@@ -35,23 +35,42 @@ class CreateOrderService {
       throw new AppError('customer not found');
     }
 
-    const productsData = await this.productsRepository.findAllById(products);
+    // const validProducts = products.filter(
+    //   product => product.id && product.quantity > 0,
+    // );
+    // console.log(`oi${validProducts.length}`);
 
-    const productsWithPrice = products.map(product => {
-      const productPrice = productsData.find(
-        productData => productData.id === product.id,
+    // if (validProducts.length === 0) {
+    //   throw new AppError('Invalid product list');
+    // }
+    // products.forEach(product => {
+    //   if (!product.id || !product.quantity) {
+    //     throw new AppError('Invalid product list');
+    //   }
+    // });
+
+    const productsIds = products.map(product => {
+      return { id: product.id };
+    });
+    const productsData = await this.productsRepository.findAllById(productsIds);
+
+    const productsFinal = productsData.map(productData => {
+      const productFinal = products.find(
+        productFind => productFind.id === productData.id,
       );
 
       return {
-        product_id: product.id,
-        quantity: product.quantity,
-        price: productPrice ? productPrice.price * product.quantity : 0,
+        product_id: productData.id,
+        price: productData.price,
+        quantity: productFinal?.quantity || 0,
       };
     });
 
+    await this.productsRepository.updateQuantity(products);
+
     const order = await this.ordersRepository.create({
       customer,
-      products: productsWithPrice,
+      products: productsFinal,
     });
 
     return order;
